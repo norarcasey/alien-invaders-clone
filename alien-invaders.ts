@@ -1,3 +1,5 @@
+import type { Grid } from './grid';
+
 export type AlienInvader = {
   index: number;
   className: string;
@@ -12,55 +14,68 @@ const INIT_ALIEN_IDS = [
 
 const alienInvaders: AlienInvader[] = [];
 const aliensRemoved: AlienInvader[] = [];
-
 let direction: number = 1;
 let goingRight: boolean = true;
 
-function turnLeft(onRightEdge: boolean, width: number): void {
-  if (onRightEdge && goingRight) {
+/**
+ * This is the automated Alien movement.
+ * It moves the aliens left and right
+ * down the page.
+ */
+function moveInvaders(grid: Grid) {
+  grid.removeFromGrid(alienInvaders);
+
+  const leftEdge = grid.onLeftEdge(alienInvaders[0].index);
+  const rightEdge = grid.onRightEdge(
+    alienInvaders[alienInvaders.length - 1].index
+  );
+
+  if (rightEdge && goingRight) {
     for (let i = 0; i < alienInvaders.length; i++) {
-      alienInvaders[i].index += width + 1;
+      alienInvaders[i].index += grid.width + 1;
     }
 
     goingRight = false;
     direction = -1;
   }
-}
 
-function turnRight(onLeftEdge: boolean, width: number): void {
-  if (onLeftEdge && !goingRight) {
+  if (leftEdge && !goingRight) {
     for (let i = 0; i < alienInvaders.length; i++) {
-      alienInvaders[i].index += width - 1;
+      alienInvaders[i].index += grid.width - 1;
     }
 
     goingRight = true;
     direction = 1;
   }
-}
-
-function move(onRightEdge: boolean, onLeftEdge: boolean, width: number): void {
-  turnLeft(onRightEdge, width);
-  turnRight(onLeftEdge, width);
 
   // update their location
   for (let i = 0; i < alienInvaders.length; i++) {
     alienInvaders[i].index += direction;
   }
+
+  grid.drawOnGrid(
+    alienInvaders.filter((alien) => !aliensRemoved.includes(alien))
+  );
+}
+
+function removeAlien(index: number, grid: Grid) {
+  // Remove Alien from the board
+  grid.removeFromGrid([alienInvaders.find((alien) => alien.index === index)]);
+  const alienRemoved = alienInvaders.find((invader) => invader.index === index);
+  aliensRemoved.push(alienRemoved);
 }
 
 /**
  * Creates the initial aliens for the level.
  *
  */
-export function InitialzeAlienInvaders(): {
+export function InitialzeAlienInvaders(grid): {
   alienInvaders: AlienInvader[];
   aliensRemoved: AlienInvader[];
-  moveAlienInvaders: (
-    onRightEdge: boolean,
-    onLeftEdge: boolean,
-    width: number
-  ) => void;
+  moveInvaders: () => void;
+  removeInvader: (index: number) => void;
 } {
+  // Create AlienInvader Objects
   for (let i = 0; i < INIT_ALIEN_IDS.length; i++) {
     alienInvaders.push({
       index: INIT_ALIEN_IDS[i],
@@ -68,5 +83,12 @@ export function InitialzeAlienInvaders(): {
     });
   }
 
-  return { alienInvaders, aliensRemoved, moveAlienInvaders: move };
+  grid.drawOnGrid(alienInvaders);
+
+  return {
+    alienInvaders,
+    aliensRemoved,
+    moveInvaders: () => moveInvaders(grid),
+    removeInvader: (index: number) => removeAlien(index, grid),
+  };
 }
